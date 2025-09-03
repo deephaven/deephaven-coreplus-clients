@@ -32,12 +32,10 @@ public class Subscription : IDisposable {
   /// Note that the stored map behaves as an immutable map. Multiple versions
   /// of this map share common subtrees. The client can keep a reference to this
   /// map as long as it would like.
-
   /// </summary>
   /// <param name="version">an out parameter where the current version number will be stored</param>
   /// <param name="map">an output parameter where the current map of PQ state will be stored</param>
   /// <returns>false if this Subscription is closed and shut down already,
-
   /// in which case the output parameter pointer values are set to default values;
   /// true otherwise. See the documentation for `IsClosed` for
   /// an explanation of how the subscription can become closed</returns>
@@ -68,7 +66,6 @@ public class Subscription : IDisposable {
   /// <param name="version">a version reference; next will return true only if a
   /// new version more recent than this argument is available</param>
   /// <returns>false if this Subscription is closed and shut down already,
-
   /// in which case the output parameter pointer values are set to default values;
   /// true otherwise. See the documentation for `IsClosed` for
   /// an explanation of how the subscription can become closed</returns>

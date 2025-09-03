@@ -1,0 +1,75 @@
+name: Dotnet Client Builds for Core Plus
+run-name: "Build, sign, pack dotnet client for Core Plus"
+on: [push, workflow_dispatch]
+
+jobs:
+  #============================================================================
+  version_job:
+    name: Find the Deephaven Core Plus client version by cat'ting the VERSION file
+    runs-on: ubuntu-24.04
+    outputs:
+      coreplus_version: ${{ steps.get-coreplus-version.outputs.coreplus_version }}
+
+    steps:
+      - name: Check out this repo
+        uses: actions/checkout@v5
+
+      - name: Output Deephaven Core Plus Version
+        id: get-coreplus-version
+        run: |
+          echo "coreplus_version=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+  #============================================================================
+  dotnet_job:
+    name: Build C# client and sign
+    runs-on: windows-2025
+    needs: version_job
+    env:
+      COREPLUS_VERSION: ${{ needs.version_job.outputs.coreplus_version }}
+      RELEASE_DIR: csharp\client\Dhe_NetClient\bin\Release
+
+    steps:
+      - name: Check out this repo
+        uses: actions/checkout@v5
+
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build Deephaven Core Plus C# Client
+        shell: cmd
+        run: |
+          cd csharp\client\Dhe_NetClient
+          dotnet build -c Release
+
+      - name: setup PATH to be able to run Visual Studio tools like signtool.exe
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Decode PFX and Import Certificate
+        shell: powershell
+        run: |
+          $pfxContent = [System.Convert]::FromBase64String("${{ secrets.CODE_SIGNING_CERT_PFX_BASE64 }}")
+          [System.IO.File]::WriteAllBytes("code-signing-cert.pfx", $pfxContent)
+
+      - name: Sign the client
+        shell: cmd
+        run: |
+          signtool.exe sign /f code-signing-cert.pfx /t http://timestamp.digicert.com /fd sha256 %RELEASE_DIR%\net8.0\*.dll
+
+      - name: Create NuGet package
+        shell: cmd
+        run: |
+          cd csharp\client\Dhe_NetClient
+          dotnet pack --no-build -c Release /p:Platform="Any CPU" /p:PackageVersion=%COREPLUS_VERSION%
+
+      - name: Sign NuGet package
+        shell: cmd
+        run: |
+          dotnet nuget sign %RELEASE_DIR%\Deephaven.CorePlus.Client.%COREPLUS_VERSION%.nupkg --timestamper http://timestamp.digicert.com --certificate-path code-signing-cert.pfx
+
+      - name: Upload signed NuGet package as Github build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-nupkg
+          path: ${{ env.RELEASE_DIR }}\Deephaven.CorePlus.Client.${{ env.COREPLUS_VERSION }}.nupkg
