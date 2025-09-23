@@ -23,10 +23,22 @@ public class AuthClient : IDisposable {
 
   private static (byte[], long) Authenticate(ClientId clientId,
     AuthApi.AuthApiClient authApi, Credentials credentials) {
-    // TODO(kosak): more credential types here
-    if (credentials is not Credentials.PasswordCredentials pwc) {
-      throw new Exception("Unexpected credentials type");
+    var authResult = credentials switch {
+      Credentials.PasswordCredentials pwc => AuthenticateByPassword(clientId, authApi, pwc),
+      Credentials.SamlCredentials samlc => AuthenticateBySaml(clientId, authApi, samlc),
+      _ => throw new Exception($"Unexpected credentials type {credentials.GetType().Name}")
+    };
+
+    if (!authResult.Authenticated) {
+      throw new Exception("Authentication failed");
     }
+
+    var cookie = authResult.Cookie.ToByteArray();
+    return (cookie, authResult.CookieDeadlineTimeMillis);
+  }
+
+  private static AuthenticationResult AuthenticateByPassword(ClientId clientId,
+    AuthApi.AuthApiClient authApi, Credentials.PasswordCredentials pwc) {
     var req = new AuthenticateByPasswordRequest {
       ClientId = clientId,
       Password = pwc.Password,
@@ -36,13 +48,16 @@ public class AuthClient : IDisposable {
       }
     };
 
-    var res = authApi.authenticateByPassword(req).Result;
-    if (!res.Authenticated) {
-      throw new Exception("Password authentication failed");
-    }
+    return authApi.authenticateByPassword(req).Result;
+  }
 
-    var cookie = res.Cookie.ToByteArray();
-    return (cookie, res.CookieDeadlineTimeMillis);
+  private static AuthenticationResult AuthenticateBySaml(ClientId clientId,
+    AuthApi.AuthApiClient authApi, Credentials.SamlCredentials samlc) {
+    var req = new AuthenticateByExternalRequest {
+      ClientId = clientId,
+      Key = samlc.Nonce
+    };
+    return authApi.authenticateByExternal(req).Result;
   }
 
   private readonly ClientId _clientId;

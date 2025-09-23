@@ -1,10 +1,10 @@
 ﻿//
 // Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
+
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
-using System.Threading.Channels;
 using Deephaven.Dh_NetClient;
-using Grpc.Core;
 using Io.Deephaven.Proto.Controller;
 
 namespace Deephaven.Dhe_NetClient;
@@ -13,42 +13,31 @@ public class SessionManager : IDisposable {
   private const string DefaultOverrideAuthority = "authserver";
   private const string DispatcherServiceName = "RemoteQueryProcessor";
 
-  private class SessionInfo {
-    public required string[] auth_host { get; set; }
-    public required UInt16 auth_port { get; set; }
-    public required string controller_host { get; set; }
-    public required UInt16 controller_port { get; set; }
-    public string? truststore_url { get; set; }
-    public bool override_authorities { get; set; }
-    public string? auth_authority { get; set; }
-    public string? controller_authority { get; set; }
-  }
-
   public static SessionManager FromUrl(string descriptiveName, Credentials credentials,
     string url, bool validateCertificate = true) {
-    var json = GetUrl(url, validateCertificate);
-    return FromJson(descriptiveName, credentials, json);
+    var info = ConfigurationInfo.OfUrl(url, validateCertificate);
+    return FromConfigInfo(descriptiveName, credentials, info);
   }
 
   public static SessionManager FromJson(string descriptiveName, Credentials credentials,
     string json) {
-    var info = JsonSerializer.Deserialize<SessionInfo>(json);
-    if (info == null) {
-      // Can this happen?
-      throw new Exception("Deserialize returned null");
-    }
+    var info = ConfigurationInfo.OfJson(json);
+    return FromConfigInfo(descriptiveName, credentials, info);
+  }
 
+  public static SessionManager FromConfigInfo(string descriptiveName, Credentials credentials,
+    ConfigurationInfo info) {
     string? rootCerts = null;
-    if (info.truststore_url != null) {
+    if (info.TruststoreUrl != null) {
       // TODO(kosak): true, false, or pass through some parameter?
-      rootCerts = GetUrl(info.truststore_url, false);
+      rootCerts = GetUrl(info.TruststoreUrl, false);
     }
 
     string? authAuthority = null;
     string? controllerAuthority = null;
-    if (info.override_authorities) {
-      authAuthority = info.auth_authority ?? DefaultOverrideAuthority;
-      controllerAuthority = info.controller_authority ?? DefaultOverrideAuthority;
+    if (info.OverrideAuthorities) {
+      authAuthority = info.AuthAuthority ?? DefaultOverrideAuthority;
+      controllerAuthority = info.ControllerAuthority ?? DefaultOverrideAuthority;
     }
 
     ArgumentNullException.ThrowIfNull(authAuthority, nameof(authAuthority));
@@ -58,9 +47,9 @@ public class SessionManager : IDisposable {
     return Create(
       descriptiveName,
       credentials,
-      info.auth_host[0], info.auth_port,
+      info.AuthHost[0], info.AuthPort,
       authAuthority,
-      info.controller_host, info.controller_port,
+      info.ControllerHost, info.ControllerPort,
       controllerAuthority,
       rootCerts);
   }
