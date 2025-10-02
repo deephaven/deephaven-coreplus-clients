@@ -206,14 +206,13 @@ public class SessionManager : IDisposable {
       throw new Exception($"{pqStrForErr} has invalid url='{url}'", e);
     }
 
-    var urlScheme = uri.Scheme;
-    var urlTarget = uri.Host + uri.PathAndQuery;
+    var connectionString = $"{uri.Host}:{uri.Port}";
     var envoyPrefix = infoMsg.State.ConnectionDetails.EnvoyPrefix;
     var scriptLanguage = infoMsg.Config.ScriptLanguage;
-    var useTls = urlScheme == Uri.UriSchemeHttps;
+    var useTls = uri.Scheme == Uri.UriSchemeHttps;
     return ConnectToDndWorker(
       pqSerial,
-      urlTarget,
+      connectionString,
       useTls,
       envoyPrefix,
       scriptLanguage);

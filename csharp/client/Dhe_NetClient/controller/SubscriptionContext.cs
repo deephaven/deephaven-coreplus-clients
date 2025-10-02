@@ -105,7 +105,6 @@ internal class SubscriptionContext : IDisposable {
           }
 
           var serial = qi.Config.Serial;
-          Console.WriteLine($"Serial is {serial:x}");
           _synced.PqMap = _synced.PqMap.With(serial, qi);
           return;
         }
