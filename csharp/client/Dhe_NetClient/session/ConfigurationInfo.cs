@@ -43,17 +43,27 @@ public sealed class ConfigurationInfo {
     return OfJson(json);
   }
 
-  public bool TryMakeSamlAuthUrl(string nonce, out string url) {
+  public bool TryMakeSamlAuthUrl(string nonce,
+    [MaybeNullWhen(false)] out string url,
+    [MaybeNullWhen(true)] out string errorText) {
+    url = null;
+    errorText = null;
+
     if (SamlSsoUri == null) {
-      url = "";
+      errorText = "Server not configured for SAML";
       return false;
     }
 
-    var uriBuilder = new UriBuilder(SamlSsoUri);
-    var query = HttpUtility.ParseQueryString(uriBuilder.Query);
-    query["key"] = nonce;
-    uriBuilder.Query = query.ToString();
-    url = uriBuilder.ToString();
-    return true;
+    try {
+      var uriBuilder = new UriBuilder(SamlSsoUri);
+      var query = HttpUtility.ParseQueryString(uriBuilder.Query);
+      query["key"] = nonce;
+      uriBuilder.Query = query.ToString();
+      url = uriBuilder.ToString();
+      return true;
+    } catch (Exception e) {
+      errorText = $"Malformed SAML URI from configuration: {e.Message}";
+      return false;
+    }
   }
 }
