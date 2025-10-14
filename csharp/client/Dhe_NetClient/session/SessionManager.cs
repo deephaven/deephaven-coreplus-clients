@@ -139,7 +139,7 @@ public class SessionManager : IDisposable {
     var clientOptions = new ClientOptions {
       UseTls = true,
       TlsRootCerts = rootCerts,
-      OverrideAuthority = overrideAuthority != null
+      OverrideAuthority = overrideAuthority
     };
 
     return (target, clientOptions);
