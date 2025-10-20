@@ -55,7 +55,7 @@ public sealed class CommonContextForTests : IDisposable {
     }
 
     var creds = Credentials.OfUsernamePassword(user!, password!, user!);
-    var sm = SessionManager.FromUrl("C++ Client Test", creds, jsonUrl!, false);
+    var sm = SessionManager.FromUri("C++ Client Test", creds, jsonUrl!, false);
     return sm;
   }
 

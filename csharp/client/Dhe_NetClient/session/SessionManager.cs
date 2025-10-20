@@ -27,7 +27,7 @@ public class SessionManager : IDisposable {
   /// <param name="descriptiveName">A descriptive name of this SessionManager (for debugging/logging)</param>
   /// <param name="credentials">The credentials to authenticate to the server</param>
   /// <param name="url">The URL of the server (e.g. https://myserver.mycorp:8123/iris/connection.json)</param>
-  /// <param name="validateCertificate">Whether you want to validate the servers SSL certificate</param>
+  /// <param name="validateCertificate">Whether you want to validate the server's SSL certificate</param>
   /// <param name="invokeBrowser">If the credentials type is SAML, a callback we will invoke containing a URI
   /// which needs to be passed to a browser for the user to authenticate. This callback must invoke the
   /// browser in the background and not block.</param>
@@ -44,7 +44,7 @@ public class SessionManager : IDisposable {
   /// <param name="descriptiveName">A descriptive name of this SessionManager (for debugging/logging)</param>
   /// <param name="credentials">The credentials to authenticate to the server</param>
   /// <param name="uri">The URI of the server (e.g. https://myserver.mycorp:8123/iris/connection.json)</param>
-  /// <param name="validateCertificate">Whether you want to validate the servers SSL certificate</param>
+  /// <param name="validateCertificate">Whether you want to validate the server's SSL certificate</param>
   /// <param name="invokeBrowser">If the credentials type is SAML, a callback we will invoke containing a URI
   /// which needs to be passed to a browser for the user to authenticate. This callback must invoke the
   /// browser in the background and not block.</param>

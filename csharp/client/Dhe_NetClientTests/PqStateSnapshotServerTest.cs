@@ -2,7 +2,6 @@
 // Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 using Deephaven.Dhe_NetClient;
-using Io.Deephaven.Proto.Controller;
 using Xunit.Abstractions;
 
 namespace Deephaven.Dhe_NetClientTests;
@@ -45,7 +44,7 @@ public class PqStateSnapshotServerTest(ITestOutputHelper output) {
     return client;
   }
 
-  bool WaitForState(Subscription sub, Int64 serial1, bool expectS1Present,
+  private static bool WaitForState(Subscription sub, Int64 serial1, bool expectS1Present,
     Int64 serial2, bool expectS2Present, out string errorMessage) {
 
     // We will give the server 15 seconds to settle to the state we expect
