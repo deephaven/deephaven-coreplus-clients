@@ -74,7 +74,7 @@ public class SessionManager : IDisposable {
 
   public static SessionManager FromConfigInfo(string descriptiveName, Credentials credentials,
     ConfigurationInfo info, Action<Uri>? invokeBrowser) {
-    string? rootCerts = null;
+    var rootCerts = "";
     if (info.TruststoreUrl != null) {
       // TODO(kosak): true, false, or pass through some parameter?
       rootCerts = GetUrl(info.TruststoreUrl, false);
@@ -86,10 +86,6 @@ public class SessionManager : IDisposable {
       authAuthority = info.AuthAuthority ?? DefaultOverrideAuthority;
       controllerAuthority = info.ControllerAuthority ?? DefaultOverrideAuthority;
     }
-
-    ArgumentNullException.ThrowIfNull(authAuthority, nameof(authAuthority));
-    ArgumentNullException.ThrowIfNull(controllerAuthority, nameof(controllerAuthority));
-    ArgumentNullException.ThrowIfNull(rootCerts, nameof(rootCerts));
 
     if (credentials is Credentials.SamlCredentials saml) {
       if (invokeBrowser == null) {
@@ -109,17 +105,15 @@ public class SessionManager : IDisposable {
     return Create(
       descriptiveName,
       credentials,
-      info.AuthHost[0], info.AuthPort,
-      authAuthority,
-      info.ControllerHost, info.ControllerPort,
-      controllerAuthority,
+      info.AuthHost[0], info.AuthPort, authAuthority,
+      info.ControllerHost, info.ControllerPort, controllerAuthority,
       rootCerts);
   }
 
   private static SessionManager Create(
     string descriptiveName, Credentials credentials,
-    string authHost, UInt16 authPort, string authAuthority,
-    string controllerHost, UInt16 controllerPort, string controllerAuthority,
+    string authHost, UInt16 authPort, string? authAuthority,
+    string controllerHost, UInt16 controllerPort, string? controllerAuthority,
     string rootCerts) {
     var (authTarget, authOptions) = SetupClientOptions(authHost, authPort,
       authAuthority, rootCerts);
@@ -129,8 +123,7 @@ public class SessionManager : IDisposable {
       controllerAuthority, rootCerts);
     var controllerClient = ControllerClient.Connect(descriptiveName,
       controllerTarget, controllerOptions, authClient);
-    return new SessionManager(descriptiveName, authClient, controllerClient,
-      authAuthority, controllerAuthority, rootCerts);
+    return new SessionManager(descriptiveName, authClient, controllerClient, rootCerts);
   }
 
   private static (string, ClientOptions) SetupClientOptions(string host, UInt16 port,
@@ -148,17 +141,13 @@ public class SessionManager : IDisposable {
   private readonly string _logId;
   private readonly AuthClient _authClient;
   private readonly ControllerClient _controllerClient;
-  private readonly string _authAuthority;
-  private readonly string _controllerAuthority;
   private readonly string _rootCerts;
 
   private SessionManager(string logId, AuthClient authClient, ControllerClient controllerClient,
-    string authAuthority, string controllerAuthority, string rootCerts) {
+    string rootCerts) {
     _logId = logId;
     _authClient = authClient;
     _controllerClient = controllerClient;
-    _authAuthority = authAuthority;
-    _controllerAuthority = controllerAuthority;
     _rootCerts = rootCerts;
   }
 
