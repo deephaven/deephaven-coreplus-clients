@@ -1,6 +1,8 @@
 ﻿//
 // Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
+
+using System.Diagnostics;
 using Deephaven.Dh_NetClient;
 using Google.Protobuf;
 using Grpc.Net.Client;
@@ -239,6 +241,14 @@ public class ControllerClient : IDisposable {
       };
     }
     // TODO(kosak): catch exception here
-    _ = _controllerApi.ping(req);
+    try {
+      _ = _controllerApi.ping(req);
+    } catch (Exception e) {
+      Debug.WriteLine($"{_clientId}: Controller heartbeat ignoring exception: {e}");
+
+      lock (_synced.SyncRoot) {
+        _synced.Keepalive.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+      }
+    }
   }
 }
