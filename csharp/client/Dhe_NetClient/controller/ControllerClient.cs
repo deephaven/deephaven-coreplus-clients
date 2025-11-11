@@ -240,7 +240,7 @@ public class ControllerClient : IDisposable {
         Cookie = ByteString.CopyFrom(_synced.AuthCookie)
       };
     }
-    // TODO(kosak): catch exception here
+
     try {
       _ = _controllerApi.ping(req);
     } catch (Exception e) {
