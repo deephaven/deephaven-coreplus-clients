@@ -308,4 +308,11 @@ public class SessionManager : IDisposable {
     var result = hc.GetStringAsync(url).Result;
     return result;
   }
+
+  /// <summary>
+  /// Ping the ControllerClient as a liveness check
+  /// </summary>
+  public void Ping() {
+    _controllerClient.Ping();
+  }
 }
