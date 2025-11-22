@@ -1,6 +1,8 @@
 ﻿//
 // Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
+
+using System.Diagnostics;
 using Google.Protobuf;
 using Io.Deephaven.Proto.Auth;
 using Io.Deephaven.Proto.Auth.Grpc;
@@ -63,6 +65,7 @@ public class AuthClient : IDisposable {
   private readonly ClientId _clientId;
   private readonly GrpcChannel _channel;
   private readonly AuthApi.AuthApiClient _authApi;
+  private readonly CancellationTokenSource _tokenSource;
 
   /// <summary>
   /// These fields are all protected by a synchronization object
@@ -70,12 +73,9 @@ public class AuthClient : IDisposable {
   private struct SyncedFields {
     public readonly object SyncRoot = new();
     public byte[] Cookie;
-    public readonly Timer Keepalive;
-    public bool Cancelled = false;
 
-    public SyncedFields(byte[] cookie, Timer keepalive) {
+    public SyncedFields(byte[] cookie) {
       Cookie = cookie;
-      Keepalive = keepalive;
     }
   }
 
@@ -86,21 +86,14 @@ public class AuthClient : IDisposable {
     _clientId = clientId;
     _channel = channel;
     _authApi = authApi;
-    var keepalive = new Timer(RefreshCookie);
-    _synced = new SyncedFields(cookie, keepalive);
+    _tokenSource = new();
+    _synced = new SyncedFields(cookie);
     var delayTime = CalcDelayTime(cookieDeadlineTimeMillis);
-    keepalive.Change(delayTime, Timeout.InfiniteTimeSpan);
+    Task.Run(async () => await RefreshCookie(_tokenSource.Token, delayTime));
   }
 
   public void Dispose() {
-    lock (_synced.SyncRoot) {
-      if (_synced.Cancelled) {
-        return;
-      }
-      _synced.Cancelled = true;
-      _synced.Keepalive.Dispose();
-    }
-
+    _tokenSource.Cancel();
     _channel.Dispose();
   }
 
@@ -116,26 +109,33 @@ public class AuthClient : IDisposable {
     return AuthUtil.AuthTokenFromProto(response.Token);
   }
 
-  private void RefreshCookie(object? _) {
-    RefreshCookieRequest req;
-    lock (_synced.SyncRoot) {
-      if (_synced.Cancelled) {
+  private async Task RefreshCookie(CancellationToken token, TimeSpan delayTime) {
+    delayTime = TimeSpan.FromSeconds(30);
+    while (true) {
+      try {
+        await Task.Delay(delayTime, token);
+
+        RefreshCookieRequest req;
+        lock (_synced.SyncRoot) {
+          req = new RefreshCookieRequest {
+            Cookie = ByteString.CopyFrom(_synced.Cookie)
+          };
+        }
+
+        var resp = _authApi.refreshCookie(req);
+        delayTime = CalcDelayTime(resp.CookieDeadlineTimeMillis);
+
+        // Empty Cookie means reuse same cookie with new deadline.
+        if (resp.Cookie.Length != 0) {
+          lock (_synced.SyncRoot) {
+            _synced.Cookie = resp.Cookie.ToByteArray();
+          }
+        }
+      } catch (Exception ex) {
+        // Whether delay cancelled, Ping exception, or other exception, exit heartbeat loop.
+        Debug.WriteLine($"AuthClient heartbeat ending: {ex}");
         return;
       }
-      req = new RefreshCookieRequest {
-        Cookie = ByteString.CopyFrom(_synced.Cookie)
-      };
-    }
-
-    var resp = _authApi.refreshCookie(req);
-    var delayTime = CalcDelayTime(resp.CookieDeadlineTimeMillis);
-
-    lock (_synced.SyncRoot) {
-      // Empty Cookie means reuse same cookie with new deadline.
-      if (resp.Cookie.Length != 0) {
-        _synced.Cookie = resp.Cookie.ToByteArray();
-      }
-      _synced.Keepalive.Change(delayTime, Timeout.InfiniteTimeSpan);
     }
   }
 
