@@ -2,13 +2,14 @@
 // Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 
-using System.Diagnostics;
 using Deephaven.Dh_NetClient;
 using Google.Protobuf;
 using Grpc.Net.Client;
 using Io.Deephaven.Proto.Auth;
 using Io.Deephaven.Proto.Controller;
 using Io.Deephaven.Proto.Controller.Grpc;
+using System;
+using System.Diagnostics;
 
 namespace Deephaven.Dhe_NetClient;
 
@@ -78,6 +79,7 @@ public class ControllerClient : IDisposable {
   private readonly ControllerApi.ControllerApiClient _controllerApi;
   private readonly SubscriptionContext _subscriptionContext;
   private readonly Subscription _sharedSubscription;
+  private readonly CancellationTokenSource _tokenSource;
 
   /// <summary>
   /// These fields are all protected by a synchronization object
@@ -87,15 +89,12 @@ public class ControllerClient : IDisposable {
     public readonly byte[] AuthCookie;
     public readonly ControllerConfigurationMessage Config;
     public readonly UserContext UserContext;
-    public readonly Timer Keepalive;
-    public bool Cancelled = false;
 
     public SyncedFields(byte[] authCookie, ControllerConfigurationMessage config,
-      UserContext userContext, Timer keepalive) {
+      UserContext userContext) {
       AuthCookie = authCookie;
       Config = config;
       UserContext = userContext;
-      Keepalive = keepalive;
     }
   }
 
@@ -111,19 +110,13 @@ public class ControllerClient : IDisposable {
     _controllerApi = controllerApi;
     _subscriptionContext = subscriptionContext;
     _sharedSubscription = new(_subscriptionContext);
-    var keepalive = new Timer(Heartbeat);
-    _synced = new SyncedFields(authCookie, config, userContext, keepalive);
-    keepalive.Change(HeartbeatPeriod, HeartbeatPeriod);
+    _tokenSource = new();
+    _synced = new SyncedFields(authCookie, config, userContext);
+    Task.Run(async () => await Heartbeat(_tokenSource.Token)).Forget();
   }
 
   public void Dispose() {
-    lock (_synced.SyncRoot) {
-      if (_synced.Cancelled) {
-        return;
-      }
-      _synced.Cancelled = true;
-      _synced.Keepalive.Dispose();
-    }
+    _tokenSource.Cancel();
     _subscriptionContext.Dispose();
     _channel.Dispose();
   }
@@ -230,24 +223,23 @@ public class ControllerClient : IDisposable {
       status == PersistentQueryStatusEnum.PqsCompleted;
   }
 
-  private void Heartbeat(object? unused) {
-    PingRequest req;
-    lock (_synced.SyncRoot) {
-      if (_synced.Cancelled) {
+  public void Ping() {
+    var req = new PingRequest {
+      Cookie = GetAuthCookie()
+    };
+
+    _ = _controllerApi.ping(req);
+  }
+
+  private async Task Heartbeat(CancellationToken token) {
+    while (true) {
+      try {
+        await Task.Delay(HeartbeatPeriod, token);
+        Ping();
+      } catch(Exception ex) {
+        // Whether delay cancelled, Ping exception, or other exception, exit heartbeat loop.
+        Debug.WriteLine($"AuthClient heartbeat ending: {ex}");
         return;
-      }
-      req = new PingRequest {
-        Cookie = ByteString.CopyFrom(_synced.AuthCookie)
-      };
-    }
-
-    try {
-      _ = _controllerApi.ping(req);
-    } catch (Exception e) {
-      Debug.WriteLine($"{_clientId}: Controller heartbeat ignoring exception: {e}");
-
-      lock (_synced.SyncRoot) {
-        _synced.Keepalive.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
       }
     }
   }
