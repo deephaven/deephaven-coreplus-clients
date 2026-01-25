@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../Dhe_NetClient/Dhe_NetClient.csproj" />
+  <Project Path="Dhe_NetClientTests.csproj" />
+</Solution>
