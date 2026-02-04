@@ -158,7 +158,7 @@ public class SessionManager : IDisposable {
 
   public DndClient AddQueryAndConnect(PersistentQueryConfigMessage pqConfig) {
     var serial = AddQueryAndStart(pqConfig);
-    var client = ConnectToPqById(serial, true);
+    var client = ConnectToPqById(serial, true, true);
     return client;
   }
 
@@ -172,29 +172,30 @@ public class SessionManager : IDisposable {
     return _controllerClient.MakeTempPqConfig(pqName);
   }
 
-  public DndClient ConnectToPqByName(string pqName, bool removeOnClose) {
+  public DndClient ConnectToPqByName(string pqName, bool removeOnClose, bool enableScripting) {
     var (pqSerial, client) = FindPqAndConnect(dict => {
       var result = dict.Values.FirstOrDefault(i => i.Config.Name == pqName);
       if (result == null) {
         throw new Exception($"pq name='{pqName}' not found");
       }
       return result;
-    });
+    }, enableScripting);
     return DndClient.Create(pqSerial, this, client, removeOnClose);
   }
 
-  public DndClient ConnectToPqById(Int64 pqSerial, bool removeOnClose) {
+  public DndClient ConnectToPqById(Int64 pqSerial, bool removeOnClose, bool enableScripting) {
     var (_, client) = FindPqAndConnect(dict => {
       if (!dict.TryGetValue(pqSerial, out var result)) {
         throw new Exception($"pqSerial='{pqSerial}' not found");
       }
       return result;
-    });
+    }, enableScripting);
     return DndClient.Create(pqSerial, this, client, removeOnClose);
   }
 
   private (Int64, Client) FindPqAndConnect(
-    Func<IReadOnlyDictionary<Int64, PersistentQueryInfoMessage>, PersistentQueryInfoMessage> filter) {
+    Func<IReadOnlyDictionary<Int64, PersistentQueryInfoMessage>, PersistentQueryInfoMessage> filter,
+    bool enableScripting) {
     using var subscription = _controllerClient.Subscribe();
     if (!subscription.Current(out var version, out var configMap)) {
       throw new Exception("Controller subscription has closed");
@@ -229,10 +230,10 @@ public class SessionManager : IDisposable {
       }
     }
 
-    return ConnectToPq(info);
+    return ConnectToPq(info, enableScripting);
   }
 
-  private (Int64, Client) ConnectToPq(PersistentQueryInfoMessage infoMsg) {
+  private (Int64, Client) ConnectToPq(PersistentQueryInfoMessage infoMsg, bool enableScripting) {
     var url = infoMsg.State.ConnectionDetails.GrpcUrl;
     var pqSerial = infoMsg.Config.Serial;
 
@@ -254,7 +255,7 @@ public class SessionManager : IDisposable {
 
     var connectionString = $"{uri.Host}:{uri.Port}";
     var envoyPrefix = infoMsg.State.ConnectionDetails.EnvoyPrefix;
-    var scriptLanguage = infoMsg.Config.ScriptLanguage;
+    var scriptLanguage = enableScripting ? infoMsg.Config.ScriptLanguage : "";
     var useTls = uri.Scheme == Uri.UriSchemeHttps;
     return ConnectToDndWorker(
       pqSerial,
