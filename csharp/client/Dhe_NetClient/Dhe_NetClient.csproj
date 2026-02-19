@@ -13,7 +13,7 @@
     <Description>A .NET library for accessing data from Deephaven Enterprise servers.</Description>
     <Copyright>Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending</Copyright>
     <PackageProjectUrl>https://deephaven.io/</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/deephaven/deephaven-enterprise-client</RepositoryUrl>
+    <RepositoryUrl>https://github.com/deephaven/deephaven-coreplus-clients</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <AssemblyName>Deephaven.CorePlus.Client</AssemblyName>
