@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <RootNamespace>Deephaven.Dhe_NetClient</RootNamespace>
@@ -34,7 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Deephaven.Core.Client" Version="0.41.2.1" />
+    <PackageReference Include="Deephaven.Core.Client" Version="0.41.2.2" />
     <PackageReference Include="Google.Protobuf" Version="3.31.1" />
     <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
     <PackageReference Include="Grpc.Tools" Version="2.72.0">
@@ -44,10 +44,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="README-nuget.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
+    <None Include="$(MSBuildProjectDirectory)\README-nuget.md"
+        Pack="true"
+        PackagePath="\"
+        Link="README-nuget.md"
+        Visible="false" />
   </ItemGroup>
 
 </Project>
