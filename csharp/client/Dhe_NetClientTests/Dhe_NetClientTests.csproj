@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -6,24 +6,16 @@
     <Nullable>enable</Nullable>
 
     <IsPackable>false</IsPackable>
-    <IsTestProject>true</IsTestProject>
     <AssemblyName>Deephaven.EnterpriseClient.GrizzlyTests</AssemblyName>
     <RootNamespace>Deephaven.Dhe_NetClientTests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.0" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageReference Include="xunit" Version="2.5.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+    <PackageReference Include="TUnit" Version="1.65.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Dhe_NetClient\Dhe_NetClient.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="Xunit" />
   </ItemGroup>
 
 </Project>

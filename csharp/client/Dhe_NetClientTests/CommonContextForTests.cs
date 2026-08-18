@@ -51,7 +51,7 @@ public sealed class CommonContextForTests : IDisposable {
         "If using the Visual Studio test runner you can edit the .runsettings file in the project directory.\n" +
         "However please note that if you are using the *ReSharper* test runner it will not honor .runsettings\n" +
         $"Otherwise you can edit {nameof(CommonContextForTests)}.{nameof(DefaultDhJsonUrl)}, " +
-        $"{nameof(CommonContextForTests)}.{nameof(DefaultDhUser)} and {nameof(CommonContextForTests)}{DefaultDhPassword}");
+        $"{nameof(CommonContextForTests)}.{nameof(DefaultDhUser)} and {nameof(CommonContextForTests)}.{nameof(DefaultDhPassword)}");
     }
 
     var creds = Credentials.OfUsernamePassword(user!, password!, user!);

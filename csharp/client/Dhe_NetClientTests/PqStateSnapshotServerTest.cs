@@ -1,35 +1,34 @@
-﻿//
+//
 // Copyright (c) 2016-2025 Deephaven Data Labs and Patent Pending
 //
 using Deephaven.Dhe_NetClient;
-using Xunit.Abstractions;
 
 namespace Deephaven.Dhe_NetClientTests;
 
-public class PqStateSnapshotServerTest(ITestOutputHelper output) {
-  [Fact]
+public class PqStateSnapshotServerTest {
+  [Test]
   public void PqFoundInSubscription() {
     using var ctx = CommonContextForTests.Create();
     var sm = ctx.SessionManager;
 
-    output.WriteLine("Creating PQ 1...");
+    Console.WriteLine("Creating PQ 1...");
     var client1 = MakePq(sm, "cpp_test_pq_1");
-    output.WriteLine("Creating PQ 2...");
+    Console.WriteLine("Creating PQ 2...");
     var client2 = MakePq(sm, "cpp_test_pq_2");
     var serial1 = client1.PqSerial;
     var serial2 = client2.PqSerial;
 
     using var sub = sm.Subscribe();
-    output.WriteLine("Waiting for both PQs to come up...");
+    Console.WriteLine("Waiting for both PQs to come up...");
     if (!WaitForState(sub, serial1, true, serial2, true, out var errorMessage)) {
       throw new Exception($"While waiting for both PQs: {errorMessage}");
     }
-    output.WriteLine("Waiting for second to be removed...");
+    Console.WriteLine("Waiting for second to be removed...");
     sm.RemoveQuery(serial2);
     if (!WaitForState(sub, serial1, true, serial2, false, out errorMessage)) {
       throw new Exception($"While waiting for second PQ to be removed: {errorMessage}");
     }
-    output.WriteLine("Waiting for first to be removed");
+    Console.WriteLine("Waiting for first to be removed");
     sm.RemoveQuery(serial1);
     if (!WaitForState(sub, serial1, false, serial2, false, out errorMessage)) {
       throw new Exception($"While waiting for first PQ to be removed: {errorMessage}");
@@ -38,7 +37,7 @@ public class PqStateSnapshotServerTest(ITestOutputHelper output) {
 
   private static DndClient MakePq(SessionManager sm, string pqName) {
     var pq = sm.MakeTempPqConfig(pqName);
-    pq.ScriptLanguage = "python"; 
+    pq.ScriptLanguage = "python";
     pq.HeapSizeGb = 4;
     var client = sm.AddQueryAndConnect(pq);
     return client;
@@ -76,4 +75,3 @@ public class PqStateSnapshotServerTest(ITestOutputHelper output) {
     }
   }
 }
-
