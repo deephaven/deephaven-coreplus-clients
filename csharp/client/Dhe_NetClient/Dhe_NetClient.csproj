@@ -34,7 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Deephaven.Core.Client" Version="0.41.2.2" />
+    <PackageReference Include="Deephaven.Core.Client" Version="0.42.4.1" />
     <PackageReference Include="Google.Protobuf" Version="3.31.1" />
     <PackageReference Include="Grpc.Net.Client" Version="2.71.0" />
     <PackageReference Include="Grpc.Tools" Version="2.72.0">
@@ -44,11 +44,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="$(MSBuildProjectDirectory)\README-nuget.md"
-        Pack="true"
-        PackagePath="\"
-        Link="README-nuget.md"
-        Visible="false" />
+    <None Include="$(MSBuildProjectDirectory)\README-nuget.md" Pack="true" PackagePath="\" Link="README-nuget.md" Visible="false" />
   </ItemGroup>
 
 </Project>
