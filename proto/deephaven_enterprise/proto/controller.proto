@@ -54,6 +54,39 @@ message ModifyQueryResponse {
 
 }
 
+message ReplicaSpecifier {
+  int64 serial = 1;
+  oneof id {
+    int32 replica = 2;
+    int32 spare = 3;
+  }
+  optional string processInfoId = 4;
+}
+
+message ReplicaStatus {
+  ReplicaSpecifier replica = 1;
+  bool success = 2;
+  optional string error = 3;
+}
+
+message RestartReplicaRequest {
+  bytes cookie = 1;
+  repeated ReplicaSpecifier replicas = 2;
+}
+
+message RestartReplicaResponse {
+  repeated ReplicaStatus status = 1;
+}
+
+message StopReplicaRequest {
+  bytes cookie = 1;
+  repeated ReplicaSpecifier replicas = 2;
+}
+
+message StopReplicaResponse {
+  repeated ReplicaStatus status = 1;
+}
+
 message RestartQueryRequest {
   bytes cookie = 1;
   repeated int64 serials = 2;
@@ -91,6 +124,7 @@ message DetermineDispatcherResponse {
   PQDBServerConfigMessage serverConfig = 1;
 }
 
+
 message PQDBServerConfigMessage {
   string name = 1;
   string host = 2;
@@ -101,6 +135,13 @@ message PQDBServerConfigMessage {
   ServerTypeEnum serverType = 7;
   repeated string consoleGroups = 8;
   optional string serverInfo = 9;
+}
+
+message AssignmentPolicyConfigMessage {
+  string name = 1;
+  string displayName = 2;
+  optional string description = 3;
+  bool acceptsParameters = 4;
 }
 
 message GetConfigurationRequest {
@@ -114,7 +155,7 @@ message GetConfigurationResponse {
 message ControllerConfigurationMessage {
   int32 maxHeapSizeGb = 1;
   double minDataBufferPoolRatio = 2;
-  double maxDataBufferPoolRation = 3;
+  double maxDataBufferPoolRatio = 3;
   repeated ConsoleConfigurationTypeMessage configurationTypes = 4;
   repeated ControllerTempQueueDetailsMessage temporaryQueueDetails = 5;
   string defaultTempQueueName = 6;
@@ -130,30 +171,11 @@ message ControllerConfigurationMessage {
   repeated RoutingConfigMessage tdsConfigs = 16;
   repeated RoutingConfigMessage disConfigs = 17;
   repeated RoutingConfigMessage lasConfigs = 18;
-  map<string, InWorkerServiceTypeMessage> inWorkerServiceDetails = 19;
-}
-
-enum RoutingServiceTypeEnum {
-  RSTE_UNSPECIFIED = 0;
-  RSTE_NONE = 1;
-  RSTE_DIS = 2;
-  RSTE_LAS = 3;
-  RSTE_TDS = 4;
-}
-
-message InWorkerServiceTypeMessage {
-  bool hasScript = 1;
-  RoutingServiceTypeEnum routingServiceType = 2;
-  string routingServiceTag = 3;
-  repeated string routingServiceExcludeTags = 4;
-  repeated string configContextValues = 5;
-  repeated string dbServerClasses = 6;
-  repeated string allowedGroups = 7;
-  string scriptUpdateClass = 8;
-  string scriptSetupClass = 9;
-  string customFieldName = 10;
-  repeated string customFieldValues = 11;
-  bool customFieldEditable = 12;
+  reserved "inWorkerServiceDetails";
+  reserved 19; // inWorkerServiceDetails, removed in Grizzly
+  repeated AssignmentPolicyConfigMessage assignmentPolicies = 20;
+  string defaultAssignmentPolicyName = 21;
+  string defaultAssignmentPolicyParams = 22;
 }
 
 message RoutingConfigMessage {
@@ -193,6 +215,7 @@ message ConsoleConfigurationTypeMessage {
   string communityInitializerClass = 21;
   bool hasScriptLanguage = 22;
   string communityRequestProcessorClass = 23;
+  bool supportsReplicas=24;
 }
 
 message ExtraColumnMessage {
@@ -205,6 +228,23 @@ enum ScriptCommandEnum {
   SCE_GET_AS_SELF = 1;
   SCE_GET_AS_OTHER = 2;
   SCE_GET_FOR_QUERY = 3;
+}
+
+message ServerSelectionStatusRequest {
+  bytes cookie = 1;
+}
+
+message ServerSelectionStatusResponse {
+  string status = 1;
+}
+
+message ServerSelectionAdminRequest {
+  bytes cookie = 1;
+  string command = 2;
+}
+
+message ServerSelectionAdminResponse {
+  string result = 1;
 }
 
 message GetScriptPathsRequest {
@@ -244,6 +284,7 @@ message StatusUpdateRequest {
 
   bool hasTableGroups = 6;
   repeated NamedStringList tableGroups = 7;
+  string processInfoId = 8;
 }
 
 message StatusUpdateResponse {
@@ -266,8 +307,59 @@ enum SubscriptionEvent {
   SE_BATCH_END = 4;
 }
 
+// A single subscription filter element matching a Persistent Query (PQ) either
+// by its serial, or by the combination of its owner and name.
+//
+// Exactly one of the variants below must be set. A filter element with neither
+// variant set, or with an OwnerAndName where either field is empty, is malformed;
+// servers that honor filters MUST reject such a request with INVALID_ARGUMENT.
+message SubscriptionFilter {
+  // The (owner, name) pair identifying a PQ. Both fields are required and must
+  // be non-empty; specifying only one is malformed.
+  message OwnerAndName {
+    string owner = 1;
+    string name = 2;
+  }
+  oneof match {
+    // Match the PQ whose serial equals this value.
+    int64 serial = 1;
+    // Match the PQ whose (owner, name) equals this pair.
+    OwnerAndName ownerAndName = 2;
+  }
+}
+
 message SubscribeRequest {
   bytes cookie = 1;
+
+  // Optional set of filters narrowing the subscription to a subset of the PQs
+  // the client is otherwise allowed to see. Semantics:
+  //
+  //  - An empty list (the default) means "no filter": the subscription behaves
+  //    as it did before this field was added and the client receives events for
+  //    every PQ visible to it.
+  //  - A non-empty list is OR-combined: a PQ matches the filter iff at least
+  //    one element in the list matches it.
+  //  - The visibility/ACL check is always implied, the filter can only
+  //    further narrow the set; it can never widen visibility.
+  //  - Filtering applies only to PQ-scoped events (SE_PUT and SE_REMOVE).
+  //    SE_CONFIG_UPDATE and SE_BATCH_END are control/global events and are
+  //    always delivered regardless of the filter.
+  //  - The filter is re-evaluated on every PQ change. A PQ that transitions
+  //    into the matching set (e.g. via rename or owner change when filtering
+  //    by owner and name) is delivered as SE_PUT; a PQ that transitions out is
+  //    delivered as SE_REMOVE. Servers track which serials have been delivered
+  //    to a given subscription so that these enter/leave transitions are
+  //    emitted exactly once.
+  //  - Malformed filter elements (see SubscriptionFilter) MUST cause the RPC
+  //    to fail with INVALID_ARGUMENT on servers that honor this field.
+  //
+  // Backwards-compatibility contract: a server MAY ignore this field (e.g. an
+  // older server that predates filter support, where the unknown field is
+  // silently dropped by proto3 parsing). Clients therefore MUST be prepared to
+  // apply the same filter locally to the incoming stream to guarantee correct
+  // behavior, including synthesizing the same enter/leave SE_PUT and SE_REMOVE
+  // transitions described above against a fully unfiltered stream.
+  repeated SubscriptionFilter filters = 2;
 }
 
 message SubscribeResponse {

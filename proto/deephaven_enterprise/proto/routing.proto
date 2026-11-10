@@ -265,16 +265,23 @@ message DataRoutingFileUpdateResponse {
   and optionally update the main routing file at the same time for an atomic change.
  */
 message DataRoutingUpdateDataImportServiceConfigsMessage {
+  // DIS Configs to add. These must not already exist.
   repeated DataImportServiceConfigMessage configToAdd = 1;
+  // DIS Configs to update (update or replace/clobber)
   repeated DataImportServiceConfigMessage configToUpdate = 2;
+  // DIS Configs to remove.
   repeated string configToRemove = 3;
+  // when replacing/clobbering, remove all other DISes not in the update list
   bool removeOthers = 4;
+  // allow certain errors, such as deleting a non-existent DIS
   bool lenient = 5;
   string user = 6;
   string code = 7;
   string comment = 8;
+  // ignore parsing errors
   bool ignoreErrors = 9;
-  google.protobuf.StringValue routingYmlString = 10; // the main routing file, as a yaml string
+  // the main routing file, as a yaml string
+  google.protobuf.StringValue routingYmlString = 10;
 }
 
 /* Request to begin listening for routing config changes */

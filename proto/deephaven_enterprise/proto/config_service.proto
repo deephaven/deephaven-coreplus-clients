@@ -32,4 +32,10 @@ service ConfigApi {
    */
    rpc updateFile(UpdateFileRequest) returns (UpdateFileResponse) {}
 
+  /*
+   * Attempt to delete one or more properties files.
+   * Deleting a non-existant file is not considered an error.
+   */
+  rpc deleteFiles(DeleteFilesRequest) returns (DeleteFilesResponse) {}
+
 }

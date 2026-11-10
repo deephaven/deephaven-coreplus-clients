@@ -16,12 +16,32 @@ message UserContext {
 
 // A unique client identifier sent by clients to introduce themselves to servers.
 message ClientId {
+  // A string to identify this client in server side log files.
+  // This has no relation to username in authentication, it is exclusively a way for client programs
+  // to provide support for ease of debugging, by providing descriptive text.
+  // A good example could be `python reconciliation script running on machine a.b.c.d`.
+  // The server will only use this string in the initial logging for a client connection.
+  // The intent is to facilitate debugging when an administrator or user of this API needs to find
+  // the entries for a given client program in server logs.
+  // The protocol is designed so that uuid is enough for tracing unique clients, so this string
+  // is not strictly necessary; it may save effort for an admin (or yourself) in tracking down
+  // a uuid in a sea of machines however.
+  // Libraries built on top of this proto are expected to allow users to provide their own string
+  // (hopefully including explanatory documentation for the purpose in their API definition).
+  // When users do not provide one, libraries are expected to provide sensible defaults
+  // (eg, "python client running on machine a.b.c.d").
   string name = 1;
   // A client uuid in bytes is created by client library code and used for the lifetime of that client process.
   // A client's uuid is expected by the server to be unique across all live client channels.
   // If the same client process during its lifetime connects to different server processes,
   // be it on different machines or different server process instances
   // on the same machine (eg, server bounce), the client process is expected to use the same uuid to all servers.
+  // Note that uuids are a means for clients and servers to uniquely identify clients in log files;
+  // a uuid on its own is not enough to uniquely identify and trust a client session in the server.
+  // See 'cookie' in other messages below for a unique, and secret, client session identifier.
+  // The uuid is a user-visible unique name for a client, that can be used across non-overlapping sessions.
+  // The cookie is not user-visible and is provided by the protocol and required by the server to trust messages
+  // to have a particular client as origin.
   bytes uuid = 2;
 }
 
@@ -70,12 +90,9 @@ message RefreshCookieRequest {
 
 // Request response for refreshCookie rpc.
 // See the service definition file for details on the rpc request.
-//
-// If the RefreshCookieResponse includes a new cookie, then the cookie
-// has cycled and the previous cookie will timeout.
 message RefreshCookieResponse {
-    // The cookie; clients should note if it has changed from the one they handed to the request.
-    bytes cookie = 1;
+    // This field is unused.
+    bytes cookie = 1 [deprecated = true];
     // Absolute time expressed as milliseconds from the epoch when cookie expires.
     sfixed64 cookie_deadline_time_millis = 2;
 }
@@ -128,6 +145,11 @@ message AuthenticateByPublicKeyResponse {
 message AuthenticateByExternalRequest {
     ClientId client_id = 1;  // the client id for the client making the request.
     string key = 2;  // the key for external authentication.
+    // clients should always send the default of false and otherwise ignore this field,
+    // this field is only for auth server implementation use.
+    // If true (which can only set by an auth server forwarding to another),
+    // only answer the request on the receiving server itself.
+    bool do_not_forward = 3;
 }
 
 // Request response for authenticateByExternal rpc.

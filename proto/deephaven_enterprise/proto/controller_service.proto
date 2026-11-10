@@ -25,7 +25,12 @@ service ControllerApi {
     rpc restartQuery(RestartQueryRequest) returns (RestartQueryResponse) {}
     rpc stopQuery(StopQueryRequest) returns (StopQueryResponse) {}
 
+    rpc restartReplica(RestartReplicaRequest) returns (RestartReplicaResponse) {}
+    rpc stopReplica(StopReplicaRequest) returns (StopReplicaResponse) {}
+
     rpc determineDispatcher(DetermineDispatcherRequest) returns (DetermineDispatcherResponse) {}
+    rpc selectionProviderStatus(ServerSelectionStatusRequest) returns (ServerSelectionStatusResponse) {}
+    rpc selectionProviderAdmin(ServerSelectionAdminRequest) returns (ServerSelectionAdminResponse) {}
     rpc getConfiguration(GetConfigurationRequest) returns (GetConfigurationResponse) {}
 
     // Script commands

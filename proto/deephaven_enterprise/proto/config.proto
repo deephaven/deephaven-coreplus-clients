@@ -35,3 +35,13 @@ message UpdateFileResponse {
 message UpdateFilesRequest {
     repeated UpdateFileRequest updateFileRequest = 1;
 }
+
+// response to DeleteFilesRequest
+message DeleteFilesResponse {
+  // just success or an exception
+}
+
+// Delete one or more properties files
+message DeleteFilesRequest {
+    repeated string name = 1;
+}

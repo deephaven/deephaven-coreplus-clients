@@ -54,9 +54,12 @@ service RoutingApi {
   /* Implements Collection<? extends TableDataServiceConfig> getTableDataServiceConfigs(); */
   rpc getTableDataServiceConfigs(AllTableDataServiceConfigRequest) returns (TableDataServiceConfigsResponse) {}
 
-  // ========== TableDataService Configs =======================================
-  /* attempt to update the contents of the data routing file */
+  // ========== WritableDataRoutingService =======================================
+  /* Update the contents of the data routing file */
   rpc updateFile(DataRoutingFileUpdateRequest) returns (DataRoutingFileUpdateResponse) {}
+  /* Update one or more items comprising the data routing configuration. According to the request message,
+     add DISes, update or remove DISes, replace all DISes, and optionally update the main routing file at the
+     same time for an atomic change. */
   rpc updateDises(DataRoutingUpdateDataImportServiceConfigsMessage) returns (DataRoutingFileUpdateResponse) {}
 
   // ========== change notification =======================================

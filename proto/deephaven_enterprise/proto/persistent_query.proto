@@ -37,6 +37,8 @@ enum PersistentQueryStatusEnum {
   PQS_STOPPED = 11;
   PQS_COMPLETED = 12;
   PQS_EXECUTING = 13;
+  // This state is not used.
+  PQS_FINDING_DISPATCHER = 14;
 }
 
 enum ExportedObjectTypeEnum {
@@ -72,7 +74,8 @@ message PersistentQueryConfigMessage {
 
   // Extra JVM arguments for this query.
   repeated string extraJvmArguments = 9;
-  // Extra environment variables for this query.
+  // Extra environment variables for this query. These must be supplied in pairs: even-numbered entries
+  // contain the environment variable name; odd-numbered entries contain its value.
   repeated string extraEnvironmentVariables = 10;
   // Extra paths to include in the queries class path.  The class paths are included at the beginning of the worker's
   // classpath, thus overriding the default classes and resources.
@@ -126,7 +129,7 @@ message PersistentQueryConfigMessage {
   // When this temporary query should be removed, in nanoseconds since the epoch.
   int64 expirationTimeNanos = 28;
 
-  // A JSON string that
+  // A JSON string that is used by the dispatcher to customize the worker’s pod when deployed on Kubernetes.
   string kubernetesControl = 29;
 
   // What kind of worker is this.  DeephavenEnterprise for Legacy workers.  DeephavenCommunity for Core+ workers.
@@ -134,6 +137,27 @@ message PersistentQueryConfigMessage {
 
   // The query creation time, in nanoseconds since the epoch.
   int64 createdTimeNanos = 31;
+
+  // The number of replicas to create and spread load across
+  int32 replicaCount = 32;
+
+  // The number of spare workers to create and use as spares to replace failed replicas
+  int32 spareCount = 33;
+
+  // The policy the controller should use to assign clients to individual replicas
+  string assignmentPolicy = 34;
+
+  // The policy parameters
+  optional string assignmentPolicyParams = 35;
+
+  // How much memory beyond the JVM should be allocated to this query?
+  double additionalMemoryGb = 36;
+
+  // Core+ Python virtual environment control
+  string pythonControl = 37;
+
+  // Generic worker control JSON
+  string genericWorkerControl = 38;
 }
 
 message ExportedObjectInfoMessage {
@@ -191,12 +215,22 @@ message PersistentQueryStateMessage {
   string engineVersion = 19;
   int32 dispatcherPort = 20;
   int64 shouldStopNanos = 21;
+  int32 numFailures = 22;
+  int64 lastFailureTimeNanos = 23;
+  int32 replicaSlot = 24;
+
+  string statusDetails = 25;
 }
 
 message PersistentQueryInfoMessage {
   PersistentQueryConfigMessage config = 1;
-  PersistentQueryStateMessage state = 2;
+  optional PersistentQueryStateMessage state = 2;
 
-  int32 numFailures = 3;
-  int64 lastFailureNanos = 4;
+  // These values used to be the failure count and failure time values for
+  // the singular query state.
+  reserved 3;
+  reserved 4;
+
+  repeated PersistentQueryStateMessage replicas = 5;
+  repeated PersistentQueryStateMessage spares = 6;
 }
